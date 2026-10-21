@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Member Lottery Machine</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="page-header">
+    <h1>MEMBER LOTTERY DRAW</h1>
+    <p>Mix the balls. Catch one winner. No repeat winners.</p>
+  </header>
+
+  <main class="layout">
+    <section class="machine-panel">
+      <div class="stats">
+        <div>Loaded <strong id="loadedCount">0</strong></div>
+        <div>Winners <strong id="winnerCount">0</strong></div>
+      </div>
+
+      <div class="machine-wrap">
+        <canvas id="machineCanvas" aria-label="Lottery machine with moving member ID balls"></canvas>
+      </div>
+
+      <div class="controls">
+        <button id="drawBtn" class="primary" disabled>🎱 Pick a Winner</button>
+        <button id="nextBtn" class="secondary" hidden>Next Draw</button>
+        <button id="exportBtn" class="secondary" disabled>Export Winners CSV</button>
+        <button id="resetBtn" class="danger" disabled>Reset</button>
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <section class="card">
+        <h2>Import member list</h2>
+        <label for="categoryColumn">Member category column</label>
+        <select id="categoryColumn" disabled>
+          <option>Import a CSV first</option>
+        </select>
+        <label class="file-button" for="csvFile">Choose CSV file</label>
+        <input id="csvFile" type="file" accept=".csv,text/csv">
+        <label class="check-row"><input id="hasHeader" type="checkbox" checked> First row contains headings</label>
+
+        <label for="idColumn">Member ID column</label>
+        <select id="idColumn" disabled><option>Import a CSV first</option></select>
+
+        <label for="nameColumn">Member name column (optional)</label>
+        <select id="nameColumn" disabled><option>Import a CSV first</option></select>
+
+        <p class="hint">In Excel, choose Save As → CSV UTF-8. Keep IDs as text if they contain leading zeros.</p>
+      </section>
+
+      <section class="card">
+        <h2>Machine settings</h2>
+        <label for="drawCategory">Draw Category</label>
+        <select id="drawCategory">
+          <option value="">All Members</option>
+        </select>
+        <label for="ballCount">Balls shown inside the machine</label>
+        <select id="ballCount">
+          <option value="350" selected>All balls</option>
+
+        </select>
+        <p class="hint">SC draws SC members, LC draws LC members, and All Members draws SC members.</p>
+      </section>
+
+      <section class="card">
+        <h2>Winner history</h2>
+        <ol id="historyList" class="history-list"><li class="empty">No winners yet.</li></ol>
+      </section>
+    </aside>
+  </main>
+
+  <div id="winnerOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="winnerTitle">
+    <div class="winner-card">
+      <div class="winner-label">★ WINNER CAUGHT ★</div>
+      <h2 id="winnerTitle">Member selected</h2>
+      <p id="winnerId" class="winner-id">Member ID</p>
+      <p class="congrats">Congratulations!</p>
+      <button id="overlayNext" class="primary">Continue</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
