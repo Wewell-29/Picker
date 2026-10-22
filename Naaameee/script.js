@@ -64,6 +64,7 @@
 
   function updateStats() {
     $('loadedCount').textContent = members.length.toLocaleString();
+    $('remainingCount').textContent = remaining.length.toLocaleString();
     $('winnerCount').textContent = winners.length.toLocaleString();
     drawBtn.disabled = drawing || getEligibleMembers().length === 0;
     exportBtn.disabled = winners.length === 0;
