@@ -11,6 +11,7 @@
   const categoryColumn = $('categoryColumn');
   const drawCategory = $('drawCategory');
   const drawBtn = $('drawBtn');
+  const bulkDrawBtn = $('bulkDrawBtn');
   const nextBtn = $('nextBtn');
   const exportBtn = $('exportBtn');
   const resetBtn = $('resetBtn');
@@ -18,7 +19,7 @@
 
   let rawRows = [], members = [], remaining = [], winners = [], balls = [];
   let width = 900, height = 650, dpr = 1, lastFrame = 0;
-  let drawing = false, drawStart = 0, selectedWinner = null, catchBall = null;
+  let drawing = false, drawStart = 0, selectedWinner = null, drawingWinners = [], catchBall = null;
 
   const colors = [
     ['#ff7272','#b8243d'], ['#4edbd0','#137b83'], ['#ffd66e','#b7751c'],
@@ -34,6 +35,16 @@
       !winnerIds.has(member.id.trim().toLowerCase()) &&
       String(member.category || '').trim().toLowerCase() === selected
     );
+  }
+
+  function getUniqueEligibleMembers() {
+    const seenIds = new Set();
+    return getEligibleMembers().filter(member => {
+      const id = member.id.trim().toLowerCase();
+      if (seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
   }
 
   function populateDrawCategories() {
@@ -67,6 +78,7 @@
     $('remainingCount').textContent = remaining.length.toLocaleString();
     $('winnerCount').textContent = winners.length.toLocaleString();
     drawBtn.disabled = drawing || getEligibleMembers().length === 0;
+    bulkDrawBtn.disabled = drawing || getUniqueEligibleMembers().length < 10;
     exportBtn.disabled = winners.length === 0;
     resetBtn.disabled = !members.length || drawing;
     $('drawBtn').textContent = drawing ? 'Drawing…' : '🎱 Pick a Winner';
@@ -143,9 +155,11 @@
     remaining = members.slice();
     winners = [];
     selectedWinner = null;
+    drawingWinners = [];
     catchBall = null;
     overlay.classList.remove('show');
     drawBtn.hidden = false;
+    bulkDrawBtn.hidden = false;
     nextBtn.hidden = true;
     populateDrawCategories();
     drawCategory.disabled = !members.length;
@@ -171,7 +185,11 @@
   }
 
   function sampleRemaining(count) {
-    const pool = getEligibleMembers().slice();
+    return sampleMembers(getEligibleMembers(), count);
+  }
+
+  function sampleMembers(membersToSample, count) {
+    const pool = membersToSample.slice();
     const chosen = [];
     const n = Math.min(count, pool.length);
     for (let i = 0; i < n; i++) {
@@ -233,7 +251,7 @@
   }
 
   function drawBall(b, timestamp) {
-    const pulse = 1 + Math.sin(timestamp / 350 + b.phase) * .025;
+    const pulse = 1 + Math.sin(timestamp / 300 + b.phase) * .025;
     const r = b.r * pulse;
     const grad = ctx.createRadialGradient(b.x-r*.36, b.y-r*.45, 1, b.x, b.y, r*1.12);
     grad.addColorStop(0, '#fff'); grad.addColorStop(.18, b.c1); grad.addColorStop(1, b.c2);
@@ -286,6 +304,11 @@
   }
 
   function drawCaughtBall(timestamp) {
+    if (catchBall.bulkBalls) {
+      drawBulkCaughtBalls(timestamp);
+      return;
+    }
+
     const g = machineGeometry();
     const elapsed = timestamp - catchBall.start;
     const p = Math.min(elapsed / 1250, 1);
@@ -312,21 +335,80 @@
     }
   }
 
+  function drawBulkCaughtBalls(timestamp) {
+    const g = machineGeometry();
+    const elapsed = timestamp - catchBall.start;
+    const duration = 1050;
+    const stagger = 90;
+
+    catchBall.bulkBalls.forEach((ball, index) => {
+      const progress = Math.max(0, Math.min((elapsed - index * stagger) / duration, 1));
+      if (progress === 0 && elapsed < index * stagger) return;
+
+      const ease = 1 - Math.pow(1 - progress, 3);
+      const x = g.cx + (ball.targetX - g.cx) * ease;
+      const startY = g.cy - g.r + 43;
+      const y = startY + (ball.targetY - startY) * ease
+        - Math.sin(progress * Math.PI) * 14;
+      const radius = ball.r * (.7 + ease * .3);
+      const grad = ctx.createRadialGradient(x-radius*.35,y-radius*.4,1,x,y,radius);
+      grad.addColorStop(0,'#fff'); grad.addColorStop(.2,ball.c1); grad.addColorStop(1,ball.c2);
+      ctx.save(); ctx.shadowColor = ball.c1; ctx.shadowBlur = 12;
+      ctx.beginPath(); ctx.arc(x,y,radius,0,Math.PI*2); ctx.fillStyle = grad; ctx.fill();
+      ctx.lineWidth=1.5; ctx.strokeStyle='#fff'; ctx.stroke(); ctx.shadowBlur=3;
+      ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.font=`900 ${Math.max(5, radius*.72)}px Arial`;
+      ctx.fillText(ball.member.id,x,y,radius*1.65); ctx.restore();
+    });
+
+    if (elapsed >= duration + (catchBall.bulkBalls.length - 1) * stagger && !catchBall.revealed) {
+      catchBall.revealed = true;
+      window.setTimeout(revealWinner, 250);
+    }
+  }
+
   function revealWinner() {
     if (!selectedWinner || !drawing) return;
     drawing = false;
-    const winner = selectedWinner;
-    const winnerId = winner.id.trim().toLowerCase();
-    remaining = remaining.filter(member => member.id.trim().toLowerCase() !== winnerId);
-    winners.push({ ...winner, drawNumber: winners.length + 1, drawnAt: new Date() });
-    $('winnerTitle').textContent = winner.name || 'Member selected';
-    $('winnerId').textContent = `Member ID: ${winner.id}`;
+    const drawnAt = new Date();
+    const newWinners = drawingWinners.map((winner, index) => ({
+      ...winner,
+      drawNumber: winners.length + index + 1,
+      drawnAt
+    }));
+    const winnerIds = new Set(newWinners.map(winner => winner.id.trim().toLowerCase()));
+    remaining = remaining.filter(member => !winnerIds.has(member.id.trim().toLowerCase()));
+    winners.push(...newWinners);
+
+    const bulkWinnerList = $('bulkWinnerList');
+    bulkWinnerList.innerHTML = '';
+    if (newWinners.length === 1) {
+      $('winnerTitle').textContent = newWinners[0].name || 'Member selected';
+      $('winnerId').textContent = `Member ID: ${newWinners[0].id}`;
+      bulkWinnerList.hidden = true;
+    } else {
+      $('winnerTitle').textContent = `${newWinners.length} Winners Selected`;
+      $('winnerId').textContent = `${newWinners.length} unique members drawn`;
+      newWinners.forEach(winner => {
+        const item = document.createElement('li');
+        const name = document.createElement('strong');
+        name.textContent = winner.name || 'Member selected';
+        const details = document.createElement('span');
+        details.textContent = `ID: ${winner.id}${winner.category ? ` · ${winner.category}` : ''}`;
+        item.append(name, details);
+        bulkWinnerList.appendChild(item);
+      });
+      bulkWinnerList.hidden = false;
+    }
+    $('winnerId').hidden = false;
     renderHistory();
     updateStats();
     overlay.classList.add('show');
     nextBtn.hidden = true;
     drawBtn.hidden = true;
+    bulkDrawBtn.hidden = true;
     selectedWinner = null;
+    drawingWinners = [];
   }
 
   function gameLoop(timestamp) {
@@ -359,12 +441,35 @@
     }
 
     if (drawing && !catchBall && timestamp-drawStart>1900) {
-      let source = balls.find(b => b.member.uid === selectedWinner.uid);
-      if (!source) {
-        const color = colors[Math.floor(Math.random()*colors.length)];
-        source = { member: selectedWinner, r: Math.max(14,Math.min(30,g.r/10)), x:g.cx, y:g.cy-g.r*.45, c1:color[0], c2:color[1] };
+      if (drawingWinners.length > 1) {
+        catchBall = {
+          start: timestamp,
+          revealed: false,
+          bulkBalls: drawingWinners.map((member, index) => {
+            const source = balls.find(ball => ball.member.uid === member.uid);
+            const color = source
+              ? [source.c1, source.c2]
+              : colors[Math.floor(Math.random()*colors.length)];
+            const radius = Math.min(24, Math.max(14, width / 22));
+            const spacing = Math.min(radius * 2.1, (width - radius * 2 - 20) / (drawingWinners.length - 1));
+            return {
+              member,
+              c1: color[0],
+              c2: color[1],
+              r: radius,
+              targetX: g.cx + (index - (drawingWinners.length - 1) / 2) * spacing,
+              targetY: g.cy - g.r - radius - 14
+            };
+          })
+        };
+      } else {
+        let source = balls.find(b => b.member.uid === selectedWinner.uid);
+        if (!source) {
+          const color = colors[Math.floor(Math.random()*colors.length)];
+          source = { member: selectedWinner, r: Math.max(14,Math.min(30,g.r/10)), x:g.cx, y:g.cy-g.r*.45, c1:color[0], c2:color[1] };
+        }
+        catchBall = { start: timestamp, memberBall: { ...source, member: selectedWinner }, revealed: false };
       }
-      catchBall = { start: timestamp, memberBall: { ...source, member: selectedWinner }, revealed: false };
     }
 
     drawMachine(timestamp);
@@ -409,15 +514,16 @@
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
 
-  function startDraw() {
+  function startDraw(count = 1) {
     if (drawing) return;
-    const eligible = getEligibleMembers();
-    if (!eligible.length) {
+    const eligible = count === 1 ? getEligibleMembers() : getUniqueEligibleMembers();
+    if (eligible.length < count) {
       updateStats();
       return;
     }
 
-    selectedWinner = eligible[Math.floor(Math.random()*eligible.length)];
+    drawingWinners = sampleMembers(eligible, count);
+    selectedWinner = drawingWinners[0];
     drawing = true;
     drawStart = performance.now();
     catchBall = null;
@@ -432,6 +538,7 @@
   function closeWinner() {
     overlay.classList.remove('show');
     drawBtn.hidden = false;
+    bulkDrawBtn.hidden = false;
     nextBtn.hidden = true;
     idColumn.disabled = nameColumn.disabled = categoryColumn.disabled = csvFile.disabled = hasHeader.disabled = false;
     drawCategory.disabled = !members.length;
@@ -446,9 +553,11 @@
     remaining = members.slice();
     winners = [];
     selectedWinner = null;
+    drawingWinners = [];
     catchBall = null;
     overlay.classList.remove('show');
     drawBtn.hidden = false;
+    bulkDrawBtn.hidden = false;
     nextBtn.hidden = true;
     makeBalls();
     renderHistory();
@@ -477,8 +586,9 @@
     updateStats();
   });
   $('ballCount').addEventListener('change', makeBalls);
-  drawBtn.addEventListener('click', startDraw);
-  nextBtn.addEventListener('click', startDraw);
+  drawBtn.addEventListener('click', () => startDraw());
+  bulkDrawBtn.addEventListener('click', () => startDraw(10));
+  nextBtn.addEventListener('click', () => startDraw());
   $('overlayNext').addEventListener('click', closeWinner);
   exportBtn.addEventListener('click', exportWinners);
   resetBtn.addEventListener('click', resetDraw);

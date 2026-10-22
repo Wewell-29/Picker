@@ -26,10 +26,12 @@
 
       <div class="controls">
         <button id="drawBtn" class="primary" disabled>🎱 Pick a Winner</button>
+        <button id="bulkDrawBtn" class="primary" disabled>🎱 Pick 10 Winners</button>
         <button id="nextBtn" class="secondary" hidden>Next Draw</button>
         <button id="exportBtn" class="secondary" disabled>Export Winners CSV</button>
         <button id="resetBtn" class="danger" disabled>Reset</button>
       </div>
+      <p class="hint">Bulk draw requires at least 10 eligible members in the selected category.</p>
     </section>
 
     <aside class="sidebar">
@@ -63,7 +65,7 @@
           <option value="350" selected>All balls</option>
 
         </select>
-        <p class="hint">SC draws SC members, LC draws LC members, and All Members draws SC members.</p>
+        
       </section>
 
       <section class="card">
@@ -78,6 +80,7 @@
       <div class="winner-label">★ WINNER CAUGHT ★</div>
       <h2 id="winnerTitle">Member selected</h2>
       <p id="winnerId" class="winner-id">Member ID</p>
+      <ol id="bulkWinnerList" class="bulk-winner-list" hidden></ol>
       <p class="congrats">Congratulations!</p>
       <button id="overlayNext" class="primary">Continue</button>
     </div>
