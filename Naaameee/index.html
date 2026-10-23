@@ -71,6 +71,7 @@
       <section class="card">
         <h2>Winner history</h2>
         <ol id="historyList" class="history-list"><li class="empty">No winners yet.</li></ol>
+        <button id="viewWinnerListBtn" class="secondary winner-list-trigger" disabled>View winner list</button>
       </section>
     </aside>
   </main>
@@ -84,6 +85,35 @@
       <p class="congrats">Congratulations!</p>
       <button id="overlayNext" class="primary">Continue</button>
     </div>
+  </div>
+
+  <div id="winnerListOverlay" class="overlay winner-list-overlay" role="dialog" aria-modal="true" aria-labelledby="winnerListTitle">
+    <section class="winner-list-card" tabindex="-1">
+      <header class="winner-list-header">
+        <h2 id="winnerListTitle">Winner list</h2>
+        <button id="closeWinnerListBtn" class="secondary" aria-label="Close winner list">Close</button>
+      </header>
+      <div class="winner-table-wrap">
+        <table class="winner-table">
+          <caption class="visually-hidden">All drawn winners, newest first</caption>
+          <thead>
+            <tr>
+              <th scope="col">Draw #</th>
+              <th scope="col">Name</th>
+              <th scope="col">Member ID</th>
+              <th scope="col">Category</th>
+              <th scope="col">Drawn at</th>
+            </tr>
+          </thead>
+          <tbody id="winnerTableBody">
+            <tr><td class="winner-table-empty" colspan="5">No winners yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="winner-list-actions">
+        <button id="winnerListExportBtn" class="secondary">Export winners CSV</button>
+      </div>
+    </section>
   </div>
 
   <script src="script.js"></script>

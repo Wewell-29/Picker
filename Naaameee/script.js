@@ -16,6 +16,9 @@
   const exportBtn = $('exportBtn');
   const resetBtn = $('resetBtn');
   const overlay = $('winnerOverlay');
+  const winnerListOverlay = $('winnerListOverlay');
+  const viewWinnerListBtn = $('viewWinnerListBtn');
+  const winnerTableBody = $('winnerTableBody');
 
   let rawRows = [], members = [], remaining = [], winners = [], balls = [];
   let width = 900, height = 650, dpr = 1, lastFrame = 0;
@@ -80,6 +83,7 @@
     drawBtn.disabled = drawing || getEligibleMembers().length === 0;
     bulkDrawBtn.disabled = drawing || getUniqueEligibleMembers().length < 10;
     exportBtn.disabled = winners.length === 0;
+    viewWinnerListBtn.disabled = winners.length === 0;
     resetBtn.disabled = !members.length || drawing;
     $('drawBtn').textContent = drawing ? 'Drawing…' : '🎱 Pick a Winner';
   }
@@ -478,6 +482,7 @@
   function renderHistory() {
     const list = $('historyList');
     list.innerHTML = '';
+    renderWinnerList();
     if (!winners.length) {
       const li = document.createElement('li');
       li.className = 'empty'; li.textContent = 'No winners yet.';
@@ -491,6 +496,36 @@
       const category = document.createElement('span'); category.className = 'history-category';
       category.textContent = w.category || 'Unspecified';
       li.append(name,id,category); list.appendChild(li);
+    });
+  }
+
+  function renderWinnerList() {
+    winnerTableBody.innerHTML = '';
+    if (!winners.length) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.className = 'winner-table-empty';
+      cell.colSpan = 5;
+      cell.textContent = 'No winners yet.';
+      row.appendChild(cell);
+      winnerTableBody.appendChild(row);
+      return;
+    }
+
+    winners.slice().reverse().forEach(winner => {
+      const row = document.createElement('tr');
+      [
+        winner.drawNumber,
+        winner.name || 'Member selected',
+        winner.id,
+        winner.category || 'Unspecified',
+        winner.drawnAt.toLocaleString()
+      ].forEach(value => {
+        const cell = document.createElement('td');
+        cell.textContent = String(value);
+        row.appendChild(cell);
+      });
+      winnerTableBody.appendChild(row);
     });
   }
 
@@ -547,6 +582,11 @@
     updateStats();
   }
 
+  function closeWinnerList() {
+    winnerListOverlay.classList.remove('show');
+    viewWinnerListBtn.focus();
+  }
+
   function resetDraw() {
     if (!members.length || drawing) return;
     if (!confirm('Reset the draw and make all imported members eligible again?')) return;
@@ -591,6 +631,19 @@
   nextBtn.addEventListener('click', () => startDraw());
   $('overlayNext').addEventListener('click', closeWinner);
   exportBtn.addEventListener('click', exportWinners);
+  viewWinnerListBtn.addEventListener('click', () => {
+    renderWinnerList();
+    winnerListOverlay.classList.add('show');
+    winnerListOverlay.querySelector('.winner-list-card').focus();
+  });
+  $('closeWinnerListBtn').addEventListener('click', closeWinnerList);
+  $('winnerListExportBtn').addEventListener('click', exportWinners);
+  winnerListOverlay.addEventListener('click', event => {
+    if (event.target === winnerListOverlay) closeWinnerList();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && winnerListOverlay.classList.contains('show')) closeWinnerList();
+  });
   resetBtn.addEventListener('click', resetDraw);
   window.addEventListener('resize', resizeCanvas);
 
