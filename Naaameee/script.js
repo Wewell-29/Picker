@@ -80,7 +80,10 @@
     $('loadedCount').textContent = members.length.toLocaleString();
     $('remainingCount').textContent = remaining.length.toLocaleString();
     $('winnerCount').textContent = winners.length.toLocaleString();
-    drawBtn.disabled = drawing || getEligibleMembers().length === 0;
+    const canDraw = !drawing && getEligibleMembers().length > 0;
+    drawBtn.disabled = !canDraw;
+    canvas.setAttribute('aria-disabled', String(!canDraw));
+    canvas.style.cursor = canDraw ? 'pointer' : 'default';
     bulkDrawBtn.disabled = drawing || getUniqueEligibleMembers().length < 10;
     exportBtn.disabled = winners.length === 0;
     viewWinnerListBtn.disabled = winners.length === 0;
@@ -627,6 +630,13 @@
   });
   $('ballCount').addEventListener('change', makeBalls);
   drawBtn.addEventListener('click', () => startDraw());
+  canvas.addEventListener('click', () => startDraw());
+  canvas.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      startDraw();
+    }
+  });
   bulkDrawBtn.addEventListener('click', () => startDraw(10));
   nextBtn.addEventListener('click', () => startDraw());
   $('overlayNext').addEventListener('click', closeWinner);
