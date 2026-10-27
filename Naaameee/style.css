@@ -109,7 +109,7 @@ select {
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
 .winner-card {
-  width: min(350px, 60vw); padding: clamp(20px, 5vw, 15px); text-align: center;
+  width: min(400px, 60vw); padding: clamp(20px, 5vw, 15px); text-align: center;
   border: 1px solid #ffe29a; border-radius: 10px;
   background: radial-gradient(ellipse at top, #344d6c, #101c2d 72%);
   box-shadow: 0 0 0 8px #ffd16618, 0 0 80px #ffd16635;
@@ -128,7 +128,7 @@ select {
   .layout { grid-template-columns: 1fr; }
   .sidebar { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); }
   .sidebar .card:last-child { grid-column: 1 / -1; }
-  .winner-card { width: min(250px, 60vw); padding: clamp(15px, 5vw, 10px); }
+  .winner-card { width: min(400px, 60vw); padding: clamp(5px, 3vw, 5px); }
   .winner-list-header, .winner-list-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .winner-list-header { margin-bottom: 10px; }
   .winner-list-header h2 { margin: 0; font-size: 1.0rem; }
