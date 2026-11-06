@@ -19,10 +19,20 @@
   const winnerListOverlay = $('winnerListOverlay');
   const viewWinnerListBtn = $('viewWinnerListBtn');
   const winnerTableBody = $('winnerTableBody');
+  const soundEnabled = $('soundEnabled');
+  const backgroundSoundEnabled = $('backgroundSoundEnabled');
+  const soundStatus = $('soundStatus');
+  const drawingAudio = $('drawingAudio');
+  const applauseAudio = $('applauseAudio');
+  const backgroundAudio = $('backgroundAudio');
+  drawingAudio.volume = 0.7;
+  applauseAudio.volume = 0.8;
+  backgroundAudio.volume = 0.2;
 
   let rawRows = [], members = [], remaining = [], winners = [], balls = [];
   let width = 900, height = 650, dpr = 1, lastFrame = 0;
   let drawing = false, drawStart = 0, selectedWinner = null, drawingWinners = [], catchBall = null;
+  let applauseStopTimer = null;
 
   const colors = [
     ['#ff7272','#b8243d'], ['#4edbd0','#137b83'], ['#ffd66e','#b7751c'],
@@ -90,6 +100,59 @@
     resetBtn.disabled = !members.length || drawing;
     $('drawBtn').textContent = drawing ? 'Drawing…' : '🎱 Pick a Winner';
   }
+
+  function startDrawingSound() {
+    if (!soundEnabled.checked) return;
+    playAudio(drawingAudio, 'drawing sound');
+  }
+
+  function stopDrawingSound() {
+    drawingAudio.pause();
+    drawingAudio.currentTime = 0;
+  }
+
+  function playApplause() {
+    if (!soundEnabled.checked) return;
+    stopApplause();
+    playAudio(applauseAudio, 'applause');
+    applauseStopTimer = window.setTimeout(stopApplause, 5000);
+  }
+
+  function stopApplause() {
+    window.clearTimeout(applauseStopTimer);
+    applauseStopTimer = null;
+    applauseAudio.pause();
+    applauseAudio.currentTime = 0;
+  }
+
+  function showSoundError(message) {
+    soundStatus.textContent = message;
+    soundStatus.hidden = false;
+  }
+
+  function playAudio(audio, name, restart = true) {
+    if (restart) audio.currentTime = 0;
+    audio.play().then(() => {
+      soundStatus.hidden = true;
+    }).catch(() => {
+      showSoundError(`Could not play the ${name}. Check that its audio file is available and try again.`);
+    });
+  }
+
+  function updateBackgroundSound() {
+    if (backgroundSoundEnabled.checked) playAudio(backgroundAudio, 'background sound', false);
+    else backgroundAudio.pause();
+  }
+
+  [
+    [drawingAudio, 'drawing sound'],
+    [applauseAudio, 'applause'],
+    [backgroundAudio, 'background sound']
+  ].forEach(([audio, name]) => {
+    audio.addEventListener('error', () => {
+      showSoundError(`Could not load the ${name}. Check that its audio file is in the Naaameee folder.`);
+    });
+  });
 
   function parseCSV(text) {
     const rows = [];
@@ -411,6 +474,7 @@
     renderHistory();
     updateStats();
     overlay.classList.add('show');
+    playApplause();
     nextBtn.hidden = true;
     drawBtn.hidden = true;
     bulkDrawBtn.hidden = true;
@@ -448,6 +512,7 @@
     }
 
     if (drawing && !catchBall && timestamp-drawStart>1900) {
+      stopDrawingSound();
       if (drawingWinners.length > 1) {
         catchBall = {
           start: timestamp,
@@ -563,6 +628,7 @@
     drawingWinners = sampleMembers(eligible, count);
     selectedWinner = drawingWinners[0];
     drawing = true;
+    startDrawingSound();
     drawStart = performance.now();
     catchBall = null;
     nextBtn.hidden = true;
@@ -639,6 +705,18 @@
   });
   bulkDrawBtn.addEventListener('click', () => startDraw(10));
   nextBtn.addEventListener('click', () => startDraw());
+  soundEnabled.addEventListener('change', () => {
+    if (soundEnabled.checked && drawing && !catchBall) startDrawingSound();
+    else stopDrawingSound();
+    if (!soundEnabled.checked) stopApplause();
+  });
+  backgroundSoundEnabled.addEventListener('change', updateBackgroundSound);
+  document.addEventListener('pointerdown', () => {
+    if (backgroundSoundEnabled.checked && backgroundAudio.paused) updateBackgroundSound();
+  }, { once: true });
+  document.addEventListener('keydown', () => {
+    if (backgroundSoundEnabled.checked && backgroundAudio.paused) updateBackgroundSound();
+  }, { once: true });
   $('overlayNext').addEventListener('click', closeWinner);
   exportBtn.addEventListener('click', exportWinners);
   viewWinnerListBtn.addEventListener('click', () => {

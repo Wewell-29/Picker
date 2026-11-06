@@ -65,7 +65,9 @@
           <option value="350" selected>All balls</option>
 
         </select>
-        
+        <label class="check-row"><input id="soundEnabled" type="checkbox" checked> Sound effects</label>
+        <label class="check-row"><input id="backgroundSoundEnabled" type="checkbox" checked> Background sound</label>
+        <p id="soundStatus" class="hint" role="status" aria-live="polite" hidden></p>
       </section>
 
       <section class="card">
@@ -116,6 +118,9 @@
     </section>
   </div>
 
+  <audio id="drawingAudio" src="bouncing_balls.wav" preload="auto" loop></audio>
+  <audio id="applauseAudio" src="applause.mp3" preload="auto"></audio>
+  <audio id="backgroundAudio" src="background.mp3" preload="auto" loop></audio>
   <script src="script.js"></script>
 </body>
 </html>
