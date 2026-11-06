@@ -23,6 +23,7 @@
   let rawRows = [], members = [], remaining = [], winners = [], balls = [];
   let width = 900, height = 650, dpr = 1, lastFrame = 0;
   let drawing = false, drawStart = 0, selectedWinner = null, drawingWinners = [], catchBall = null;
+  let audioContext = null, masterGain = null, clapBuffer = null, lastBounceSound = 0;
 
   const colors = [
     ['#ff7272','#b8243d'], ['#4edbd0','#137b83'], ['#ffd66e','#b7751c'],
@@ -31,12 +32,84 @@
     ['#c3ed84','#537a29'], ['#f6a45d','#984b20'], ['#f1b0dc','#9a477d']
   ];
 
+  function getAudioContext() {
+    if (audioContext) return audioContext;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+    try {
+      audioContext = new AudioContextClass();
+      masterGain = audioContext.createGain();
+      masterGain.gain.value = $('soundEnabled').checked ? 0.55 : 0;
+      masterGain.connect(audioContext.destination);
+      return audioContext;
+    } catch (error) {
+      audioContext = null;
+      masterGain = null;
+      console.warn('Audio effects are unavailable:', error);
+      return null;
+    }
+  }
+
+  function playBounceSound(speed) {
+    if (!$('soundEnabled').checked) return;
+    const context = getAudioContext();
+    if (!context || context.state !== 'running') return;
+    const now = context.currentTime;
+    if (now - lastBounceSound < 0.075) return;
+    lastBounceSound = now;
+
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = 'triangle';
+    oscillator.frequency.setValueAtTime(170 + Math.min(speed, 12) * 38, now);
+    oscillator.frequency.exponentialRampToValueAtTime(85, now + 0.09);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.18, now + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+    oscillator.connect(gain);
+    gain.connect(masterGain);
+    oscillator.start(now);
+    oscillator.stop(now + 0.12);
+  }
+
+  function playApplause() {
+    if (!$('soundEnabled').checked) return;
+    const context = getAudioContext();
+    if (!context || context.state !== 'running') return;
+    if (!clapBuffer) {
+      const length = Math.floor(context.sampleRate * 0.12);
+      clapBuffer = context.createBuffer(1, length, context.sampleRate);
+      const samples = clapBuffer.getChannelData(0);
+      for (let i = 0; i < length; i++) samples[i] = Math.random() * 2 - 1;
+    }
+
+    const now = context.currentTime;
+    for (let i = 0; i < 32; i++) {
+      const start = now + Math.random() * 1.35;
+      const source = context.createBufferSource();
+      const filter = context.createBiquadFilter();
+      const gain = context.createGain();
+      source.buffer = clapBuffer;
+      filter.type = 'bandpass';
+      filter.frequency.value = 900 + Math.random() * 1800;
+      filter.Q.value = 0.7;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.12 + Math.random() * 0.12, start + 0.004);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.1);
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      source.start(start);
+      source.stop(start + 0.12);
+    }
+  }
+
   function getEligibleMembers() {
-    const selected = String(drawCategory.value || 'sc').trim().toLowerCase();
+    const selected = String(drawCategory.value || '').trim().toLowerCase();
     const winnerIds = new Set(winners.map(winner => winner.id.trim().toLowerCase()));
     return remaining.filter(member =>
       !winnerIds.has(member.id.trim().toLowerCase()) &&
-      String(member.category || '').trim().toLowerCase() === selected
+      (!selected || String(member.category || '').trim().toLowerCase() === selected)
     );
   }
 
@@ -410,6 +483,7 @@
     $('winnerId').hidden = false;
     renderHistory();
     updateStats();
+    playApplause();
     overlay.classList.add('show');
     nextBtn.hidden = true;
     drawBtn.hidden = true;
@@ -442,8 +516,10 @@
       const dx=b.x-g.cx, dy=b.y-g.cy, distance=Math.hypot(dx,dy), limit=g.r-b.r-8;
       if (distance>limit) {
         const nx=dx/(distance||1), ny=dy/(distance||1);
+        const impactSpeed = Math.hypot(b.vx, b.vy);
         b.x=g.cx+nx*limit; b.y=g.cy+ny*limit;
         const dot=b.vx*nx+b.vy*ny; b.vx-=2*dot*nx; b.vy-=2*dot*ny;
+        if (drawing && !catchBall) playBounceSound(impactSpeed);
       }
     }
 
@@ -560,6 +636,12 @@
       return;
     }
 
+    if ($('soundEnabled').checked) {
+      const context = getAudioContext();
+      if (context && context.state !== 'running') {
+        context.resume().catch(error => console.warn('Audio playback could not start:', error));
+      }
+    }
     drawingWinners = sampleMembers(eligible, count);
     selectedWinner = drawingWinners[0];
     drawing = true;
@@ -655,6 +737,9 @@
     if (event.key === 'Escape' && winnerListOverlay.classList.contains('show')) closeWinnerList();
   });
   resetBtn.addEventListener('click', resetDraw);
+  $('soundEnabled').addEventListener('change', event => {
+    if (masterGain) masterGain.gain.setTargetAtTime(event.target.checked ? 0.55 : 0, audioContext.currentTime, 0.02);
+  });
   window.addEventListener('resize', resizeCanvas);
 
   resizeCanvas();
