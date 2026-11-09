@@ -16,6 +16,8 @@
   const exportBtn = $('exportBtn');
   const resetBtn = $('resetBtn');
   const overlay = $('winnerOverlay');
+  const confettiCanvas = $('confettiCanvas');
+  const confettiCtx = confettiCanvas.getContext('2d');
   const winnerListOverlay = $('winnerListOverlay');
   const viewWinnerListBtn = $('viewWinnerListBtn');
   const winnerTableBody = $('winnerTableBody');
@@ -25,14 +27,15 @@
   const drawingAudio = $('drawingAudio');
   const applauseAudio = $('applauseAudio');
   const backgroundAudio = $('backgroundAudio');
-  drawingAudio.volume = 0.7;
-  applauseAudio.volume = 0.8;
-  backgroundAudio.volume = 0.2;
+  drawingAudio.volume = 0.8;
+  applauseAudio.volume = 0.9;
+  backgroundAudio.volume = 1.0;
 
   let rawRows = [], members = [], remaining = [], winners = [], balls = [];
   let width = 900, height = 650, dpr = 1, lastFrame = 0;
   let drawing = false, drawStart = 0, selectedWinner = null, drawingWinners = [], catchBall = null;
   let applauseStopTimer = null;
+  let confettiParticles = [], confettiFrame = 0;
 
   const colors = [
     ['#ff7272','#b8243d'], ['#4edbd0','#137b83'], ['#ffd66e','#b7751c'],
@@ -116,6 +119,61 @@
     stopApplause();
     playAudio(applauseAudio, 'applause');
     applauseStopTimer = window.setTimeout(stopApplause, 5000);
+  }
+
+  function showConfetti() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    window.cancelAnimationFrame(confettiFrame);
+    const bounds = overlay.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    confettiCanvas.width = Math.round(bounds.width * dpr);
+    confettiCanvas.height = Math.round(bounds.height * dpr);
+    confettiCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const colors = ['#ffd166', '#ff7272', '#4edbd0', '#7da5ff', '#d7a0ff', '#72e5a1'];
+    const originX = bounds.width / 2;
+    const originY = bounds.height * .45;
+    confettiParticles = Array.from({ length: 140 }, () => ({
+      x: originX,
+      y: originY,
+      vx: (Math.random() - .5) * 15,
+      vy: -Math.random() * 10 - 4,
+      size: Math.random() * 7 + 4,
+      rotation: Math.random() * Math.PI * 2,
+      rotationSpeed: (Math.random() - .5) * .3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      age: 0,
+      lifetime: Math.random() * 55 + 90
+    }));
+
+    let previousTimestamp = 0;
+    function animateConfetti(timestamp) {
+      const step = previousTimestamp ? Math.min((timestamp - previousTimestamp) / 16.67, 2.5) : 1;
+      previousTimestamp = timestamp;
+      confettiCtx.clearRect(0, 0, bounds.width, bounds.height);
+      confettiParticles = confettiParticles.filter(particle => particle.age < particle.lifetime);
+
+      confettiParticles.forEach(particle => {
+        particle.age += step;
+        particle.vy += .18 * step;
+        particle.x += particle.vx * step;
+        particle.y += particle.vy * step;
+        particle.rotation += particle.rotationSpeed * step;
+        confettiCtx.save();
+        confettiCtx.translate(particle.x, particle.y);
+        confettiCtx.rotate(particle.rotation);
+        confettiCtx.globalAlpha = Math.min(1, (particle.lifetime - particle.age) / 18);
+        confettiCtx.fillStyle = particle.color;
+        confettiCtx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size * .65);
+        confettiCtx.restore();
+      });
+
+      if (confettiParticles.length) confettiFrame = window.requestAnimationFrame(animateConfetti);
+      else confettiCtx.clearRect(0, 0, bounds.width, bounds.height);
+    }
+
+    confettiFrame = window.requestAnimationFrame(animateConfetti);
   }
 
   function stopApplause() {
@@ -474,6 +532,7 @@
     renderHistory();
     updateStats();
     overlay.classList.add('show');
+    showConfetti();
     playApplause();
     nextBtn.hidden = true;
     drawBtn.hidden = true;
