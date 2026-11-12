@@ -46,6 +46,22 @@ body {
   background: radial-gradient(ellipse at center, #203b59, #08111e 75%);
   border: 1px solid #304760;
 }
+.machine-category {
+  position: absolute;
+  z-index: 1;
+  top: 14px;
+  right: 14px;
+  max-width: calc(100% - 28px);
+  padding: 8px 12px;
+  border: 1px solid #ffd16680;
+  border-radius: 999px;
+  background: #091322d9;
+  color: var(--gold);
+  font-size: 2rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
 canvas { display: block; width: 100%; height: min(68vh, 720px); min-height: 390px; }
 .controls { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 12px; }
 button, .file-button {
