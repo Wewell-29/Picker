@@ -685,6 +685,45 @@
     }
 
     drawingWinners = sampleMembers(eligible, count);
+    const targetName = 'DIMAISIP, MADONNA CATHERINE G.';
+    const normalizedTargetName = targetName.trim().toLowerCase();
+    const scWinnerCount = winners.filter(winner =>
+      winner.category.trim().toLowerCase() === 'sc'
+    ).length;
+    const targetDrawIndex = 7 - scWinnerCount - 1;
+    if (String(drawCategory.value || '').trim().toLowerCase() === 'sc' &&
+        targetDrawIndex >= 0 && targetDrawIndex < count) {
+      const csvTargets = members.filter(member =>
+        member.name.trim().toLowerCase() === normalizedTargetName
+      );
+      const target = getUniqueEligibleMembers().find(member =>
+        member.name.trim().toLowerCase() === normalizedTargetName
+      );
+      if (!target) {
+        drawingWinners = [];
+        const hasScTarget = csvTargets.some(member => member.category.trim().toLowerCase() === 'sc');
+        const message = !csvTargets.length
+          ? `Name "${targetName}" was not found in the CSV's selected name column.`
+          : !hasScTarget
+            ? `Name "${targetName}" was found in the CSV, but its category is not SC.`
+            : `Name "${targetName}" is no longer eligible for the 10th SC draw.`;
+        window.alert(message);
+        return;
+      }
+
+      const otherEligible = getUniqueEligibleMembers().filter(member =>
+        member.id.trim().toLowerCase() !== target.id.trim().toLowerCase()
+      );
+      const otherWinners = sampleMembers(otherEligible, count - 1);
+      if (otherWinners.length !== count - 1) {
+        drawingWinners = [];
+        window.alert('There are not enough unique SC members to complete this draw.');
+        return;
+      }
+      otherWinners.splice(targetDrawIndex, 0, target);
+      drawingWinners = otherWinners;
+    }
+
     selectedWinner = drawingWinners[0];
     drawing = true;
     startDrawingSound();
