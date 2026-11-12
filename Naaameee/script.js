@@ -93,6 +93,7 @@
     $('loadedCount').textContent = members.length.toLocaleString();
     $('remainingCount').textContent = remaining.length.toLocaleString();
     $('winnerCount').textContent = winners.length.toLocaleString();
+    $('machineCategory').textContent = drawCategory.selectedOptions[0]?.textContent || 'All Members';
     const canDraw = !drawing && getEligibleMembers().length > 0;
     drawBtn.disabled = !canDraw;
     canvas.setAttribute('aria-disabled', String(!canDraw));
